@@ -169,7 +169,10 @@ class LoginPage extends StatelessWidget {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid credentials'), backgroundColor: Colors.red,),
+        const SnackBar(
+          content: Text('Invalid credentials'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -262,59 +265,94 @@ class ActivitiesPage extends StatefulWidget {
   _ActivitiesPageState createState() => _ActivitiesPageState();
 }
 
-class _ActivitiesPageState extends State<ActivitiesPage> {
-  late Future<List<Activity>> futureActivities;
+class _ActivitiesPageState extends State<ActivitiesPage>
+    with SingleTickerProviderStateMixin {
+  TabController? _tabController; // Make it nullable
+  List<Activity> _activities = [];
+  Set<String> _categories = {'All'};
+  List<Activity> _filteredActivities = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchActivities().then((activities) {
+      setState(() {
+        _activities = activities;
+        _categories
+            .addAll(_activities.map((activity) => activity.category).toSet());
+        _filteredActivities = _activities;
+        // Initialize the TabController here
+        _tabController = TabController(vsync: this, length: _categories.length);
+      });
+    });
+  }
 
   Future<List<Activity>> fetchActivities() async {
-    final response =
-        await http.get(Uri.parse('http://localhost:3030/activities'));
-
+    // Simulate fetching activities from a backend
+    var url = Uri.parse('http://localhost:3030/activities');
+    var response = await http.get(url);
     if (response.statusCode == 200) {
-      List<dynamic> activitiesJson = json.decode(response.body);
-      return activitiesJson.map((json) => Activity.fromJson(json)).toList();
+      List<dynamic> data = jsonDecode(response.body);
+      return data
+          .map((activityJson) => Activity.fromJson(activityJson))
+          .toList();
     } else {
       throw Exception('Failed to load activities');
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    futureActivities = fetchActivities();
+  void filterActivities(String category) {
+    setState(() {
+      if (category == 'All') {
+        _filteredActivities = _activities;
+      } else {
+        _filteredActivities = _activities
+            .where((activity) => activity.category == category)
+            .toList();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Activity>>(
-      future: futureActivities,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Text("Error: ${snapshot.error}");
-        } else {
-          return ListView.builder(
-            itemCount: snapshot.data!.length,
-            itemBuilder: (context, index) {
-              Activity activity = snapshot.data![index];
-              return ListTile(
-                leading: Image.network(activity.imageUrl),
-                title: Text(activity.title),
-                subtitle: Text('${activity.location} - \$${activity.price}'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            ActivityDetailPage(activity: activity)),
-                  );
-                },
-              );
-            },
-          );
-        }
-      },
+    // Check if _tabController is initialized
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Activities'),
+        bottom: _tabController == null
+            ? null
+            : TabBar(
+                controller: _tabController!,
+                isScrollable: true,
+                tabs:
+                    _categories.map((category) => Tab(text: category)).toList(),
+                onTap: (index) =>
+                    filterActivities(_categories.elementAt(index)),
+              ),
+      ),
+      body: _tabController == null
+          ? Center(
+              child:
+                  CircularProgressIndicator()) // Show loading indicator until _tabController is initialized
+          : ListView.builder(
+              itemCount: _filteredActivities.length,
+              itemBuilder: (context, index) {
+                final activity = _filteredActivities[index];
+                return ListTile(
+                  leading: Image.network(activity.imageUrl),
+                  title: Text(activity.title),
+                  subtitle: Text(
+                      '${activity.category} - ${activity.location} - \$${activity.price}'),
+                );
+              },
+            ),
     );
+  }
+
+  @override
+  void dispose() {
+    _tabController?.dispose(); // Use null-aware call to dispose
+    super.dispose();
   }
 }
 
@@ -385,7 +423,10 @@ class ActivityDetailPage extends StatelessWidget {
     final String? token = prefs.getString('token');
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You are not logged in.'), backgroundColor: Colors.red,),
+        const SnackBar(
+          content: Text('You are not logged in.'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -403,8 +444,8 @@ class ActivityDetailPage extends StatelessWidget {
     final message = responseBody['message'] ?? 'An unexpected error occurred';
 
     if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.green));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message), backgroundColor: Colors.red));
@@ -552,7 +593,9 @@ class _BasketPageState extends State<BasketPage> {
         basketItems = fetchBasketItems();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Activity removed from basket'), backgroundColor: Colors.blue),
+        const SnackBar(
+            content: Text('Activity removed from basket'),
+            backgroundColor: Colors.blue),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -596,8 +639,10 @@ class _ProfilePageState extends State<ProfilePage> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
     if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You are not logged in.'), backgroundColor: Colors.red,));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('You are not logged in.'),
+        backgroundColor: Colors.red,
+      ));
       return;
     }
 
@@ -616,8 +661,9 @@ class _ProfilePageState extends State<ProfilePage> {
         _cityController.text = profileData['city'] ?? '';
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to fetch profile data'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Failed to fetch profile data'),
+          backgroundColor: Colors.red));
     }
   }
 
@@ -625,8 +671,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
     if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You are not logged in.'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('You are not logged in.'),
+          backgroundColor: Colors.red));
       return;
     }
 
@@ -646,11 +693,13 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully'), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Profile updated successfully'),
+          backgroundColor: Colors.green));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update profile'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Failed to update profile'),
+          backgroundColor: Colors.red));
     }
   }
 
@@ -753,13 +802,17 @@ class _RegisterPageState extends State<RegisterPage> {
     if (response.statusCode == 200) {
       // Successfully registered
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration successful'), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text('Registration successful'),
+            backgroundColor: Colors.green),
       );
       Navigator.pop(context); // Navigate back to login page
     } else {
       // Registration failed
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(body.message ?? 'Registration failed'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text(body.message ?? 'Registration failed'),
+            backgroundColor: Colors.red),
       );
     }
   }
