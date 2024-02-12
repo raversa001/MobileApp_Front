@@ -137,6 +137,13 @@ class LoginPage extends StatelessWidget {
               onPressed: () => _attemptLogin(context),
               child: const Text('Se connecter'),
             ),
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RegisterPage()),
+              ),
+              child: const Text('Inscription'),
+            ),
           ],
         ),
       ),
@@ -162,7 +169,7 @@ class LoginPage extends StatelessWidget {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid credentials')),
+        const SnackBar(content: Text('Invalid credentials'), backgroundColor: Colors.red,),
       );
     }
   }
@@ -378,7 +385,7 @@ class ActivityDetailPage extends StatelessWidget {
     final String? token = prefs.getString('token');
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You are not logged in.')),
+        const SnackBar(content: Text('You are not logged in.'), backgroundColor: Colors.red,),
       );
       return;
     }
@@ -397,7 +404,7 @@ class ActivityDetailPage extends StatelessWidget {
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+          .showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message), backgroundColor: Colors.red));
@@ -545,7 +552,7 @@ class _BasketPageState extends State<BasketPage> {
         basketItems = fetchBasketItems();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Activity removed from basket')),
+        const SnackBar(content: Text('Activity removed from basket'), backgroundColor: Colors.blue),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -589,8 +596,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
     if (token == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('You are not logged in.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You are not logged in.'), backgroundColor: Colors.red,));
       return;
     }
 
@@ -610,7 +617,7 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to fetch profile data')));
+          const SnackBar(content: Text('Failed to fetch profile data'), backgroundColor: Colors.red));
     }
   }
 
@@ -618,8 +625,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
     if (token == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('You are not logged in.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You are not logged in.'), backgroundColor: Colors.red));
       return;
     }
 
@@ -640,10 +647,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')));
+          const SnackBar(content: Text('Profile updated successfully'), backgroundColor: Colors.green));
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Failed to update profile')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update profile'), backgroundColor: Colors.red));
     }
   }
 
@@ -718,5 +725,76 @@ class _ProfilePageState extends State<ProfilePage> {
     _postalCodeController.dispose();
     _cityController.dispose();
     super.dispose();
+  }
+}
+
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
+  @override
+  _RegisterPageState createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends State<RegisterPage> {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  Future<void> _register() async {
+    var url = Uri.parse('http://localhost:3030/register');
+    var response = await http.post(url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "login": _usernameController.text,
+          "password": _passwordController.text,
+        }));
+
+    final body = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      // Successfully registered
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration successful'), backgroundColor: Colors.green),
+      );
+      Navigator.pop(context); // Navigate back to login page
+    } else {
+      // Registration failed
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(body.message ?? 'Registration failed'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Register'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            TextField(
+              controller: _usernameController,
+              decoration: const InputDecoration(labelText: 'Username'),
+            ),
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Password'),
+            ),
+            ElevatedButton(
+              onPressed: _register,
+              child: const Text('Register'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
