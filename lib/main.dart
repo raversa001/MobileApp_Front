@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, library_private_types_in_public_api
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -181,9 +181,9 @@ class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
 
   static final List<Widget> _widgetOptions = <Widget>[
-    ActivitiesPage(), // Placeholder for Activities Page, to be implemented
-    BasketPage(),
-    const Text('Profile Page'), // Placeholder for Profile Page
+    const ActivitiesPage(), // Placeholder for Activities Page, to be implemented
+    const BasketPage(),
+    const ProfilePage()
   ];
 
   void _onItemTapped(int index) {
@@ -249,6 +249,8 @@ class Activity {
 }
 
 class ActivitiesPage extends StatefulWidget {
+  const ActivitiesPage({super.key});
+
   @override
   _ActivitiesPageState createState() => _ActivitiesPageState();
 }
@@ -280,7 +282,7 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
       future: futureActivities,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
           return Text("Error: ${snapshot.error}");
         } else {
@@ -312,8 +314,7 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
 class ActivityDetailPage extends StatelessWidget {
   final Activity activity;
 
-  const ActivityDetailPage({Key? key, required this.activity})
-      : super(key: key);
+  const ActivityDetailPage({super.key, required this.activity});
 
   @override
   Widget build(BuildContext context) {
@@ -329,7 +330,7 @@ class ActivityDetailPage extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Text(activity.title,
-                  style: Theme.of(context).textTheme.headline6),
+                  style: Theme.of(context).textTheme.titleLarge),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -354,7 +355,7 @@ class ActivityDetailPage extends StatelessWidget {
                   // Implement navigation back to activities list
                   Navigator.pop(context);
                 },
-                child: Text('Return'),
+                child: const Text('Return'),
               ),
             ),
             Padding(
@@ -398,13 +399,15 @@ class ActivityDetailPage extends StatelessWidget {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(message)));
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red));
     }
   }
 }
 
 class BasketPage extends StatefulWidget {
+  const BasketPage({super.key});
+
   @override
   _BasketPageState createState() => _BasketPageState();
 }
@@ -470,7 +473,7 @@ class _BasketPageState extends State<BasketPage> {
           } else if (snapshot.hasError) {
             return Text('Error: ${snapshot.error}');
           } else if (snapshot.data!.isEmpty) {
-            return Center(
+            return const Center(
               child: Text(
                 'Your basket is empty.',
                 style: TextStyle(fontSize: 18.0),
@@ -490,7 +493,7 @@ class _BasketPageState extends State<BasketPage> {
                         subtitle:
                             Text('${activity.location} - \$${activity.price}'),
                         trailing: IconButton(
-                          icon: Icon(Icons.remove_circle_outline),
+                          icon: const Icon(Icons.remove_circle_outline),
                           onPressed: () =>
                               removeActivityFromBasket(activity.id),
                         ),
@@ -501,7 +504,7 @@ class _BasketPageState extends State<BasketPage> {
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Text('Total: \$${totalPrice.toStringAsFixed(2)}',
-                      style: TextStyle(fontSize: 18.0)),
+                      style: const TextStyle(fontSize: 18.0)),
                 ),
               ],
             );
@@ -517,7 +520,10 @@ class _BasketPageState extends State<BasketPage> {
     final String? token = prefs.getString('token');
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You are not logged in.'), backgroundColor: Colors.red,),
+        const SnackBar(
+          content: Text('You are not logged in.'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -542,9 +548,175 @@ class _BasketPageState extends State<BasketPage> {
         const SnackBar(content: Text('Activity removed from basket')),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(                
-        SnackBar(content: Text(responseBody.message ?? 'Failed to remove activity from basket'), backgroundColor: Colors.red),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(responseBody.message ??
+                'Failed to remove activity from basket'),
+            backgroundColor: Colors.red),
       );
     }
+  }
+}
+
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
+  @override
+  _ProfilePageState createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  late TextEditingController _loginController;
+  late TextEditingController _passwordController;
+  late TextEditingController _birthdayController;
+  late TextEditingController _addressController;
+  late TextEditingController _postalCodeController;
+  late TextEditingController _cityController;
+
+  @override
+  void initState() {
+    super.initState();
+    _loginController = TextEditingController();
+    _passwordController = TextEditingController();
+    _birthdayController = TextEditingController();
+    _addressController = TextEditingController();
+    _postalCodeController = TextEditingController();
+    _cityController = TextEditingController();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token');
+    if (token == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('You are not logged in.')));
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse('http://localhost:3030/profile'),
+      headers: {"Authorization": "Bearer $token"},
+    );
+
+    if (response.statusCode == 200) {
+      final profileData = json.decode(response.body);
+      setState(() {
+        _loginController.text = profileData['login'] ?? '';
+        _birthdayController.text = profileData['birthday'] ?? '';
+        _addressController.text = profileData['address'] ?? '';
+        _postalCodeController.text = profileData['postalCode'] ?? '';
+        _cityController.text = profileData['city'] ?? '';
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to fetch profile data')));
+    }
+  }
+
+  Future<void> _updateProfile() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token');
+    if (token == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('You are not logged in.')));
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('http://localhost:3030/profile/update'),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "password": _passwordController.text,
+        "birthday": _birthdayController.text,
+        "address": _addressController.text,
+        "postalCode": _postalCodeController.text,
+        "city": _cityController.text,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully')));
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Failed to update profile')));
+    }
+  }
+
+  Future<void> _logout() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => LoginPage()));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profile'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _loginController,
+              decoration: const InputDecoration(labelText: 'Login'),
+              readOnly: true,
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+            TextField(
+              controller: _birthdayController,
+              decoration: const InputDecoration(labelText: 'Birthday'),
+              keyboardType: TextInputType.datetime,
+            ),
+            TextField(
+              controller: _addressController,
+              decoration: const InputDecoration(labelText: 'Address'),
+            ),
+            TextField(
+              controller: _postalCodeController,
+              decoration: const InputDecoration(labelText: 'Postal Code'),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _cityController,
+              decoration: const InputDecoration(labelText: 'City'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _updateProfile,
+              child: const Text('Update Profile'),
+            ),
+            ElevatedButton(
+              onPressed: _logout,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Logout'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _loginController.dispose();
+    _passwordController.dispose();
+    _birthdayController.dispose();
+    _addressController.dispose();
+    _postalCodeController.dispose();
+    _cityController.dispose();
+    super.dispose();
   }
 }
