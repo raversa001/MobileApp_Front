@@ -391,14 +391,15 @@ class ActivityDetailPage extends StatelessWidget {
       body: jsonEncode({"activityId": activityId}),
     );
 
+    final responseBody = jsonDecode(response.body);
+    final message = responseBody['message'] ?? 'An unexpected error occurred';
+
     if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Activity added to basket')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to add activity to basket')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
     }
   }
 }
@@ -409,11 +410,9 @@ class BasketPage extends StatefulWidget {
 }
 
 class _BasketPageState extends State<BasketPage> {
-  late Future<List<Activity>> futureActivities;
   late Future<List<Activity>> basketItems;
   double totalPrice = 0.0;
 
-  // Inside _BasketPageState
   Future<List<Activity>> fetchBasketItems() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
@@ -428,8 +427,16 @@ class _BasketPageState extends State<BasketPage> {
 
     if (response.statusCode == 200) {
       List<dynamic> activitiesJson = json.decode(response.body);
+      // Check if the basket is empty and return an empty list instead of throwing an exception
+      if (activitiesJson.isEmpty) {
+        return []; // Return an empty list for an empty basket
+      }
       return activitiesJson.map((json) => Activity.fromJson(json)).toList();
+    } else if (response.statusCode == 404) {
+      // Specifically handle the case where the basket is not found (which can imply it's empty)
+      return []; // Return an empty list for an empty or not found basket
     } else {
+      // For any other error, you might still want to throw an exception or handle it differently
       throw Exception('Failed to load basket');
     }
   }
@@ -443,10 +450,10 @@ class _BasketPageState extends State<BasketPage> {
     super.initState();
     basketItems = fetchBasketItems();
     basketItems.then((activities) {
-      calculateTotalPrice(activities);
+      setState(() {
+        calculateTotalPrice(activities);
+      });
     });
-    futureActivities =
-        fetchBasketItems(); // Initialize futureActivities in initState
   }
 
   @override
@@ -463,7 +470,12 @@ class _BasketPageState extends State<BasketPage> {
           } else if (snapshot.hasError) {
             return Text('Error: ${snapshot.error}');
           } else if (snapshot.data!.isEmpty) {
-            return const Text('Your basket is empty.');
+            return Center(
+              child: Text(
+                'Your basket is empty.',
+                style: TextStyle(fontSize: 18.0),
+              ),
+            );
           } else {
             return Column(
               children: [
@@ -477,7 +489,6 @@ class _BasketPageState extends State<BasketPage> {
                         title: Text(activity.title),
                         subtitle:
                             Text('${activity.location} - \$${activity.price}'),
-                        // Inside ListView.builder itemBuilder of BasketPage
                         trailing: IconButton(
                           icon: Icon(Icons.remove_circle_outline),
                           onPressed: () =>
@@ -487,7 +498,11 @@ class _BasketPageState extends State<BasketPage> {
                     },
                   ),
                 ),
-                Text('Total: \$${totalPrice.toStringAsFixed(2)}'),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text('Total: \$${totalPrice.toStringAsFixed(2)}',
+                      style: TextStyle(fontSize: 18.0)),
+                ),
               ],
             );
           }
@@ -502,7 +517,7 @@ class _BasketPageState extends State<BasketPage> {
     final String? token = prefs.getString('token');
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You are not logged in.')),
+        const SnackBar(content: Text('You are not logged in.'), backgroundColor: Colors.red,),
       );
       return;
     }
@@ -516,6 +531,8 @@ class _BasketPageState extends State<BasketPage> {
       body: jsonEncode({"activityId": activityId}),
     );
 
+    final responseBody = jsonDecode(response.body);
+
     if (response.statusCode == 200) {
       setState(() {
         // Refetch the basket items to update the UI after removal
@@ -525,8 +542,8 @@ class _BasketPageState extends State<BasketPage> {
         const SnackBar(content: Text('Activity removed from basket')),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to remove activity from basket')),
+      ScaffoldMessenger.of(context).showSnackBar(                
+        SnackBar(content: Text(responseBody.message ?? 'Failed to remove activity from basket'), backgroundColor: Colors.red),
       );
     }
   }
