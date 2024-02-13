@@ -383,6 +383,11 @@ class _ActivitiesPageState extends State<ActivitiesPage>
                   title: Text(activity.title),
                   subtitle: Text(
                       '${activity.category} - ${activity.location} - \$${activity.price}'),
+                  onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) =>
+                            ActivityDetailPage(activity: activity)));
+                  },
                 );
               },
             ),
