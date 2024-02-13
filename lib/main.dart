@@ -9,33 +9,48 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final ThemeManager _themeManager = ThemeManager(
+    ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+      useMaterial3: true,
+    ),
+  );
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: FutureBuilder<String?>(
-        future: getLoggedInUsername(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const CircularProgressIndicator();
-          } else if (snapshot.hasData) {
-            // User is logged in, and we have the username
-            return MainPage(
-                username: snapshot.data!); // Use the fetched username
-          } else {
-            // User is not logged in
-            return LoginPage();
-          }
-        },
-      ),
+    // Use AnimatedBuilder to listen to ThemeManager changes
+    return AnimatedBuilder(
+      animation: _themeManager,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Flutter Demo',
+          theme: _themeManager.themeData,
+          home: FutureBuilder<String?>(
+            future: getLoggedInUsername(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const CircularProgressIndicator();
+              } else if (snapshot.hasData) {
+                // User is logged in, and we have the username
+                return MainPage(
+                    username: snapshot.data!); // Use the fetched username
+              } else {
+                // User is not logged in
+                return LoginPage();
+              }
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -207,6 +222,31 @@ class _MainPageState extends State<MainPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Main Page'),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Theme.of(context).brightness == Brightness.dark
+                ? Icons.wb_sunny
+                : Icons.nightlight_round),
+            onPressed: () {
+              // Determine the new theme based on the current theme
+              ThemeData newTheme = Theme.of(context).brightness ==
+                      Brightness.dark
+                  ? ThemeData(
+                      colorScheme:
+                          ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+                      useMaterial3: true,
+                    )
+                  : ThemeData(
+                      colorScheme: ColorScheme.dark(),
+                      useMaterial3: true,
+                    );
+              // Access the theme manager from MyApp and set the new theme
+              (context.findAncestorStateOfType<_MyAppState>() as _MyAppState)
+                  ._themeManager
+                  .setTheme(newTheme);
+            },
+          ),
+        ],
       ),
       body: Center(
         child: _widgetOptions.elementAt(_selectedIndex),
@@ -849,5 +889,18 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
     );
+  }
+}
+
+class ThemeManager with ChangeNotifier {
+  ThemeData _themeData;
+
+  ThemeManager(this._themeData);
+
+  get themeData => _themeData;
+
+  setTheme(ThemeData theme) {
+    _themeData = theme;
+    notifyListeners();
   }
 }
