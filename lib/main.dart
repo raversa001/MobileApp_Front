@@ -307,10 +307,13 @@ class ActivitiesPage extends StatefulWidget {
 
 class _ActivitiesPageState extends State<ActivitiesPage>
     with SingleTickerProviderStateMixin {
-  TabController? _tabController; // Make it nullable
+  TabController? _tabController;
   List<Activity> _activities = [];
   Set<String> _categories = {'All'};
   List<Activity> _filteredActivities = [];
+  bool _isSearchMode = false; // Add this
+  final TextEditingController _searchController =
+      TextEditingController(); // And this
 
   @override
   void initState() {
@@ -343,12 +346,21 @@ class _ActivitiesPageState extends State<ActivitiesPage>
 
   void filterActivities(String category) {
     setState(() {
-      if (category == 'All') {
+      if (category == 'All' && !_isSearchMode) {
         _filteredActivities = _activities;
       } else {
-        _filteredActivities = _activities
+        var categoryFiltered = _activities
             .where((activity) => activity.category == category)
             .toList();
+        if (_isSearchMode && _searchController.text.isNotEmpty) {
+          _filteredActivities = categoryFiltered
+              .where((activity) => activity.title
+                  .toLowerCase()
+                  .contains(_searchController.text.toLowerCase()))
+              .toList();
+        } else {
+          _filteredActivities = categoryFiltered;
+        }
       }
     });
   }
@@ -358,17 +370,48 @@ class _ActivitiesPageState extends State<ActivitiesPage>
     // Check if _tabController is initialized
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activities'),
-        bottom: _tabController == null
-            ? null
-            : TabBar(
-                controller: _tabController!,
-                isScrollable: true,
-                tabs:
-                    _categories.map((category) => Tab(text: category)).toList(),
-                onTap: (index) =>
-                    filterActivities(_categories.elementAt(index)),
-              ),
+        title: _isSearchMode
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search activities...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white54
+                        : Colors.black54,
+                  ),
+                ),
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                ),
+                onChanged: (value) => _filterActivitiesByName(value),
+              )
+            : const Text('Activities'),
+        actions: [
+          _isSearchMode
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    setState(() {
+                      _isSearchMode = false;
+                      _searchController.clear();
+                      _filterActivitiesByName('');
+                    });
+                  },
+                )
+              : IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () {
+                    setState(() {
+                      _isSearchMode = true;
+                    });
+                  },
+                ),
+        ],
       ),
       body: _tabController == null
           ? Center(
@@ -392,6 +435,55 @@ class _ActivitiesPageState extends State<ActivitiesPage>
               },
             ),
     );
+  }
+
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        TextEditingController searchController = TextEditingController();
+        return AlertDialog(
+          title: Text('Search Activities'),
+          content: TextField(
+            controller: searchController,
+            decoration: InputDecoration(hintText: "Enter activity name"),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Search'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _filterActivitiesByName(searchController.text);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _filterActivitiesByName(String searchText) {
+    String currentCategory = _categories.elementAt(_tabController?.index ?? 0);
+
+    setState(() {
+      if (searchText.isEmpty) {
+        // Apply only category filter when search text is cleared
+        _filteredActivities = _activities
+            .where((activity) => currentCategory == 'All'
+                ? true
+                : activity.category == currentCategory)
+            .toList();
+      } else {
+        // Apply both category and name filter
+        _filteredActivities = _activities
+            .where((activity) => currentCategory == 'All'
+                ? true
+                : activity.category == currentCategory)
+            .where((activity) =>
+                activity.title.toLowerCase().contains(searchText.toLowerCase()))
+            .toList();
+      }
+    });
   }
 
   @override
