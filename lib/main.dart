@@ -10,7 +10,9 @@ void main() {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
+  static const apiUrl = "https://mobileapp-aversa.onrender.com";
+  //static const apiUrl = "http://localhost:3030";
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -32,7 +34,7 @@ class _MyAppState extends State<MyApp> {
       animation: _themeManager,
       builder: (context, _) {
         return MaterialApp(
-          title: 'Flutter Demo',
+          title: 'WeFun',
           theme: _themeManager.themeData,
           home: FutureBuilder<String?>(
             future: getLoggedInUsername(),
@@ -60,7 +62,7 @@ class _MyAppState extends State<MyApp> {
     if (token == null) return false;
 
     final response = await http.get(
-      Uri.parse('http://localhost:3030/isLoggedIn'),
+      Uri.parse('${MyApp.apiUrl}/isLoggedIn'),
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
@@ -83,7 +85,7 @@ class _MyAppState extends State<MyApp> {
     if (token == null) return null;
 
     final response = await http.get(
-      Uri.parse('http://localhost:3030/isLoggedIn'),
+      Uri.parse('${MyApp.apiUrl}/isLoggedIn'),
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
@@ -169,7 +171,7 @@ class LoginPage extends StatelessWidget {
     final login = _loginController.text;
     final password = _passwordController.text;
     // Implement the API call for login
-    var url = Uri.parse('http://localhost:3030/login');
+    var url = Uri.parse('${MyApp.apiUrl}/login');
     var response = await http.post(url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"login": login, "password": password}));
@@ -204,16 +206,28 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
+  final PageController _pageController = PageController();
 
   static final List<Widget> _widgetOptions = <Widget>[
-    const ActivitiesPage(), // Placeholder for Activities Page, to be implemented
+    const ActivitiesPage(),
     const BasketPage(),
-    const ProfilePage()
+    const ProfilePage(),
   ];
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+    _pageController.jumpToPage(index);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(() {
+      setState(() {
+        _selectedIndex = _pageController.page!.round();
+      });
     });
   }
 
@@ -237,19 +251,25 @@ class _MainPageState extends State<MainPage> {
                       useMaterial3: true,
                     )
                   : ThemeData(
-                      colorScheme: ColorScheme.dark(),
+                      colorScheme: const ColorScheme.dark(),
                       useMaterial3: true,
                     );
               // Access the theme manager from MyApp and set the new theme
-              (context.findAncestorStateOfType<_MyAppState>() as _MyAppState)
+              (context.findAncestorStateOfType<_MyAppState>()!)
                   ._themeManager
                   .setTheme(newTheme);
             },
           ),
         ],
       ),
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        children: _widgetOptions,
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
@@ -263,6 +283,12 @@ class _MainPageState extends State<MainPage> {
         onTap: _onItemTapped,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 }
 
@@ -307,32 +333,169 @@ class ActivitiesPage extends StatefulWidget {
 
 class _ActivitiesPageState extends State<ActivitiesPage>
     with SingleTickerProviderStateMixin {
-  TabController? _tabController;
   List<Activity> _activities = [];
-  Set<String> _categories = {'All'};
   List<Activity> _filteredActivities = [];
-  bool _isSearchMode = false; // Add this
-  final TextEditingController _searchController =
-      TextEditingController(); // And this
+  bool _isSearchMode = false;
+  final TextEditingController _searchController = TextEditingController();
+  TabController? _tabController; // Changed from late to nullable
+  final Set<String> _categories = {'All'}; // Initialized with 'All'
 
   @override
   void initState() {
     super.initState();
     fetchActivities().then((activities) {
-      setState(() {
-        _activities = activities;
-        _categories
-            .addAll(_activities.map((activity) => activity.category).toSet());
-        _filteredActivities = _activities;
-        // Initialize the TabController here
-        _tabController = TabController(vsync: this, length: _categories.length);
-      });
+      if (mounted) {
+        // Check if the widget is still in the tree
+        setState(() {
+          _activities = activities;
+          _categories
+              .addAll(activities.map((activity) => activity.category).toSet());
+          _filteredActivities = activities;
+          _tabController = TabController(
+              length: _categories.length,
+              vsync: this); // Initialize with actual length
+          _tabController!.addListener(() {
+            // Ensure we rebuild when tab changes if needed
+            if (_isSearchMode) {
+              _searchController.clear();
+              _filterActivitiesByName('');
+            }
+          });
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+
+    // Conditional rendering based on whether _tabController is initialized
+    if (_tabController == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Activities'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    } else {
+      return Scaffold(
+        appBar: AppBar(
+          title: _isSearchMode
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Search activities...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(
+                      color: textColor.withOpacity(
+                          0.6), // Use a slightly opaque version for hint text
+                    ),
+                  ),
+                  style: TextStyle(
+                    color: textColor, // Use the dynamic text color here
+                  ),
+                  onChanged: (value) {
+                    _filterActivitiesByName(value);
+                  },
+                )
+              : const Text('Activities'),
+          bottom: _isSearchMode
+              ? null
+              : TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabs: _categories
+                      .map((category) => Tab(text: category))
+                      .toList(),
+                ),
+          actions: buildActions(),
+        ),
+        body: _isSearchMode || _tabController == null
+            ? _buildActivityList(
+                'All') // Display all if in search mode or _tabController is not ready
+            : TabBarView(
+                controller: _tabController,
+                children: _categories.map((category) {
+                  return _buildActivityList(category);
+                }).toList(),
+              ),
+      );
+    }
+  }
+
+  List<Widget> buildActions() {
+    return [
+      if (!_isSearchMode)
+        IconButton(
+          icon: const Icon(Icons.search),
+          onPressed: () => setState(() {
+            _isSearchMode = true;
+          }),
+        ),
+      if (_isSearchMode)
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => setState(() {
+            _isSearchMode = false;
+            _searchController.clear();
+            _filterActivitiesByName('');
+          }),
+        ),
+    ];
+  }
+
+  Widget _buildActivityList(String category) {
+    final activitiesToShow = category == 'All'
+        ? _filteredActivities
+        : _filteredActivities
+            .where((activity) => activity.category == category)
+            .toList();
+
+    return ListView.builder(
+      itemCount: activitiesToShow.length,
+      itemBuilder: (context, index) {
+        final activity = activitiesToShow[index];
+        return ListTile(
+          leading: Image.network(activity.imageUrl),
+          title: Text(activity.title),
+          subtitle: Text(
+              '${activity.category} - ${activity.location} - \$${activity.price}'),
+          onTap: () {
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => ActivityDetailPage(activity: activity)));
+          },
+        );
+      },
+    );
+  }
+
+  void _filterActivitiesByName(String searchText) {
+    setState(() {
+      _filteredActivities = _activities.where((activity) {
+        return activity.title
+                .toLowerCase()
+                .contains(searchText.toLowerCase()) ||
+            searchText.isEmpty;
+      }).toList();
+    });
+  }
+
+  void filterActivities(String category) {
+    setState(() {
+      _filteredActivities = _activities.where((activity) {
+        return category == 'All' ? true : activity.category == category;
+      }).toList();
     });
   }
 
   Future<List<Activity>> fetchActivities() async {
-    // Simulate fetching activities from a backend
-    var url = Uri.parse('http://localhost:3030/activities');
+    var url = Uri.parse('${MyApp.apiUrl}/activities');
     var response = await http.get(url);
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body);
@@ -344,151 +507,9 @@ class _ActivitiesPageState extends State<ActivitiesPage>
     }
   }
 
-  void filterActivities(String category) {
-    setState(() {
-      if (category == 'All' && !_isSearchMode) {
-        _filteredActivities = _activities;
-      } else {
-        var categoryFiltered = _activities
-            .where((activity) => activity.category == category)
-            .toList();
-        if (_isSearchMode && _searchController.text.isNotEmpty) {
-          _filteredActivities = categoryFiltered
-              .where((activity) => activity.title
-                  .toLowerCase()
-                  .contains(_searchController.text.toLowerCase()))
-              .toList();
-        } else {
-          _filteredActivities = categoryFiltered;
-        }
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Check if _tabController is initialized
-    return Scaffold(
-      appBar: AppBar(
-        title: _isSearchMode
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Search activities...',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white54
-                        : Colors.black54,
-                  ),
-                ),
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black,
-                ),
-                onChanged: (value) => _filterActivitiesByName(value),
-              )
-            : const Text('Activities'),
-        actions: [
-          _isSearchMode
-              ? IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () {
-                    setState(() {
-                      _isSearchMode = false;
-                      _searchController.clear();
-                      _filterActivitiesByName('');
-                    });
-                  },
-                )
-              : IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: () {
-                    setState(() {
-                      _isSearchMode = true;
-                    });
-                  },
-                ),
-        ],
-      ),
-      body: _tabController == null
-          ? Center(
-              child:
-                  CircularProgressIndicator()) // Show loading indicator until _tabController is initialized
-          : ListView.builder(
-              itemCount: _filteredActivities.length,
-              itemBuilder: (context, index) {
-                final activity = _filteredActivities[index];
-                return ListTile(
-                  leading: Image.network(activity.imageUrl),
-                  title: Text(activity.title),
-                  subtitle: Text(
-                      '${activity.category} - ${activity.location} - \$${activity.price}'),
-                  onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) =>
-                            ActivityDetailPage(activity: activity)));
-                  },
-                );
-              },
-            ),
-    );
-  }
-
-  void _showSearchDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        TextEditingController searchController = TextEditingController();
-        return AlertDialog(
-          title: Text('Search Activities'),
-          content: TextField(
-            controller: searchController,
-            decoration: InputDecoration(hintText: "Enter activity name"),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Search'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _filterActivitiesByName(searchController.text);
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _filterActivitiesByName(String searchText) {
-    String currentCategory = _categories.elementAt(_tabController?.index ?? 0);
-
-    setState(() {
-      if (searchText.isEmpty) {
-        // Apply only category filter when search text is cleared
-        _filteredActivities = _activities
-            .where((activity) => currentCategory == 'All'
-                ? true
-                : activity.category == currentCategory)
-            .toList();
-      } else {
-        // Apply both category and name filter
-        _filteredActivities = _activities
-            .where((activity) => currentCategory == 'All'
-                ? true
-                : activity.category == currentCategory)
-            .where((activity) =>
-                activity.title.toLowerCase().contains(searchText.toLowerCase()))
-            .toList();
-      }
-    });
-  }
-
   @override
   void dispose() {
-    _tabController?.dispose(); // Use null-aware call to dispose
+    _tabController?.dispose();
     super.dispose();
   }
 }
@@ -569,7 +590,7 @@ class ActivityDetailPage extends StatelessWidget {
     }
 
     final response = await http.post(
-      Uri.parse('http://localhost:3030/addToBasket'),
+      Uri.parse('${MyApp.apiUrl}/addToBasket'),
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
@@ -609,7 +630,7 @@ class _BasketPageState extends State<BasketPage> {
     }
 
     final response = await http.get(
-      Uri.parse('http://localhost:3030/basket'),
+      Uri.parse('${MyApp.apiUrl}/basket'),
       headers: {"Authorization": "Bearer $token"},
     );
 
@@ -714,7 +735,7 @@ class _BasketPageState extends State<BasketPage> {
     }
 
     final response = await http.post(
-      Uri.parse('http://localhost:3030/removeFromBasket'),
+      Uri.parse('${MyApp.apiUrl}/removeFromBasket'),
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
@@ -784,7 +805,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     final response = await http.get(
-      Uri.parse('http://localhost:3030/profile'),
+      Uri.parse('${MyApp.apiUrl}/profile'),
       headers: {"Authorization": "Bearer $token"},
     );
 
@@ -815,7 +836,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     final response = await http.post(
-      Uri.parse('http://localhost:3030/profile/update'),
+      Uri.parse('${MyApp.apiUrl}/profile/update'),
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
@@ -926,7 +947,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _passwordController = TextEditingController();
 
   Future<void> _register() async {
-    var url = Uri.parse('http://localhost:3030/register');
+    var url = Uri.parse('${MyApp.apiUrl}/register');
     var response = await http.post(url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
