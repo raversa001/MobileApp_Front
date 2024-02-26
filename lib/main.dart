@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously, library_private_types_in_public_api
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -416,7 +417,7 @@ class _ActivitiesPageState extends State<ActivitiesPage>
         ),
         body: _isSearchMode || _tabController == null
             ? _buildActivityList(
-                'All') // Display all if in search mode or _tabController is not ready
+                'Tout') // Display all if in search mode or _tabController is not ready
             : TabBarView(
                 controller: _tabController,
                 children: _categories.map((category) {
@@ -901,6 +902,9 @@ class _ProfilePageState extends State<ProfilePage> {
               controller: _postalCodeController,
               decoration: const InputDecoration(labelText: 'Code postal'),
               keyboardType: TextInputType.number,
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.digitsOnly
+              ],
             ),
             TextField(
               controller: _cityController,
