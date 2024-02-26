@@ -42,11 +42,8 @@ class _MyAppState extends State<MyApp> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const CircularProgressIndicator();
               } else if (snapshot.hasData) {
-                // User is logged in, and we have the username
-                return MainPage(
-                    username: snapshot.data!); // Use the fetched username
+                return MainPage(username: snapshot.data!);
               } else {
-                // User is not logged in
                 return LoginPage();
               }
             },
@@ -71,7 +68,7 @@ class _MyAppState extends State<MyApp> {
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
-      // Save the username for later use
+
       await prefs.setString('username', responseData['username']);
       return true;
     } else {
@@ -187,7 +184,7 @@ class LoginPage extends StatelessWidget {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Invalid credentials'),
+          content: Text('Identifiants incorrects'),
           backgroundColor: Colors.red,
         ),
       );
@@ -235,7 +232,7 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Main Page'),
+        title: const Text('Accueil'),
         actions: <Widget>[
           IconButton(
             icon: Icon(Theme.of(context).brightness == Brightness.dark
@@ -273,10 +270,10 @@ class _MainPageState extends State<MainPage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Activities'),
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Activités'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart), label: 'Basket'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+              icon: Icon(Icons.shopping_cart), label: 'Panier'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.amber[800],
@@ -315,9 +312,9 @@ class Activity {
     return Activity(
       id: json['_id'] ?? '',
       imageUrl: json['imageUrl'] ?? 'https://example.com/default.jpg',
-      title: json['title'] ?? 'Untitled',
-      category: json['category'] ?? 'Unknown',
-      location: json['location'] ?? 'No location provided',
+      title: json['title'] ?? 'Sans titre',
+      category: json['category'] ?? 'Inconnu',
+      location: json['location'] ?? 'Inconnu',
       minimumPeople: json['minimumPeople'] ?? 1,
       price: (json['price'] ?? 0.0).toDouble(),
     );
@@ -338,7 +335,7 @@ class _ActivitiesPageState extends State<ActivitiesPage>
   bool _isSearchMode = false;
   final TextEditingController _searchController = TextEditingController();
   TabController? _tabController; // Changed from late to nullable
-  final Set<String> _categories = {'All'}; // Initialized with 'All'
+  final Set<String> _categories = {'Tout'}; // Initialized with 'All'
 
   @override
   void initState() {
@@ -376,7 +373,7 @@ class _ActivitiesPageState extends State<ActivitiesPage>
     if (_tabController == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Activities'),
+          title: const Text('Activités'),
         ),
         body: const Center(
           child: CircularProgressIndicator(),
@@ -390,7 +387,7 @@ class _ActivitiesPageState extends State<ActivitiesPage>
                   controller: _searchController,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: 'Search activities...',
+                    hintText: 'Rechercher une activité...',
                     border: InputBorder.none,
                     hintStyle: TextStyle(
                       color: textColor.withOpacity(
@@ -404,7 +401,7 @@ class _ActivitiesPageState extends State<ActivitiesPage>
                     _filterActivitiesByName(value);
                   },
                 )
-              : const Text('Activities'),
+              : const Text('Activités'),
           bottom: _isSearchMode
               ? null
               : TabBar(
@@ -451,7 +448,7 @@ class _ActivitiesPageState extends State<ActivitiesPage>
   }
 
   Widget _buildActivityList(String category) {
-    final activitiesToShow = category == 'All'
+    final activitiesToShow = category == 'Tout'
         ? _filteredActivities
         : _filteredActivities
             .where((activity) => activity.category == category)
@@ -489,7 +486,7 @@ class _ActivitiesPageState extends State<ActivitiesPage>
   void filterActivities(String category) {
     setState(() {
       _filteredActivities = _activities.where((activity) {
-        return category == 'All' ? true : activity.category == category;
+        return category == 'Tout' ? true : activity.category == category;
       }).toList();
     });
   }
@@ -503,7 +500,7 @@ class _ActivitiesPageState extends State<ActivitiesPage>
           .map((activityJson) => Activity.fromJson(activityJson))
           .toList();
     } else {
-      throw Exception('Failed to load activities');
+      throw Exception('Impossible de charger les activités');
     }
   }
 
@@ -537,19 +534,19 @@ class ActivityDetailPage extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text("Category: ${activity.category}"),
+              child: Text("Catégorie: ${activity.category}"),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text("Location: ${activity.location}"),
+              child: Text("Localisation: ${activity.location}"),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text("Minimum People: ${activity.minimumPeople}"),
+              child: Text("Personnes minimum: ${activity.minimumPeople}"),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text("Price: \$${activity.price}"),
+              child: Text("Prix: \$${activity.price}"),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -558,14 +555,14 @@ class ActivityDetailPage extends StatelessWidget {
                   // Implement navigation back to activities list
                   Navigator.pop(context);
                 },
-                child: const Text('Return'),
+                child: const Text('Retour'),
               ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: ElevatedButton(
                 onPressed: () => addToBasket(context, activity.id),
-                child: const Text('Add to Basket'),
+                child: const Text('Ajouter au panier'),
               ),
             ),
           ],
@@ -582,7 +579,7 @@ class ActivityDetailPage extends StatelessWidget {
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('You are not logged in.'),
+          content: Text('Vous n\'êtes pas connecté.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -599,7 +596,7 @@ class ActivityDetailPage extends StatelessWidget {
     );
 
     final responseBody = jsonDecode(response.body);
-    final message = responseBody['message'] ?? 'An unexpected error occurred';
+    final message = responseBody['message'] ?? 'Une erreur est survenue';
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -626,7 +623,7 @@ class _BasketPageState extends State<BasketPage> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
     if (token == null) {
-      throw Exception('User not logged in');
+      throw Exception('Utilisateur non-connecté');
     }
 
     final response = await http.get(
@@ -636,17 +633,16 @@ class _BasketPageState extends State<BasketPage> {
 
     if (response.statusCode == 200) {
       List<dynamic> activitiesJson = json.decode(response.body);
-      // Check if the basket is empty and return an empty list instead of throwing an exception
+
       if (activitiesJson.isEmpty) {
-        return []; // Return an empty list for an empty basket
+        return [];
       }
+
       return activitiesJson.map((json) => Activity.fromJson(json)).toList();
     } else if (response.statusCode == 404) {
-      // Specifically handle the case where the basket is not found (which can imply it's empty)
-      return []; // Return an empty list for an empty or not found basket
+      return [];
     } else {
-      // For any other error, you might still want to throw an exception or handle it differently
-      throw Exception('Failed to load basket');
+      throw Exception('Impossible de charger le panier');
     }
   }
 
@@ -669,7 +665,7 @@ class _BasketPageState extends State<BasketPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Basket'),
+        title: const Text('Mon panier'),
       ),
       body: FutureBuilder<List<Activity>>(
         future: basketItems,
@@ -677,11 +673,11 @@ class _BasketPageState extends State<BasketPage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const CircularProgressIndicator();
           } else if (snapshot.hasError) {
-            return Text('Error: ${snapshot.error}');
+            return Text('Erreur: ${snapshot.error}');
           } else if (snapshot.data!.isEmpty) {
             return const Center(
               child: Text(
-                'Your basket is empty.',
+                'Votre panier est vide.',
                 style: TextStyle(fontSize: 18.0),
               ),
             );
@@ -727,7 +723,7 @@ class _BasketPageState extends State<BasketPage> {
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('You are not logged in.'),
+          content: Text('Vous n\'êtes pas connecté.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -752,14 +748,14 @@ class _BasketPageState extends State<BasketPage> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Activity removed from basket'),
+            content: Text('Activité supprimé du panier'),
             backgroundColor: Colors.blue),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(responseBody.message ??
-                'Failed to remove activity from basket'),
+                'Impossible de retirer l\'article du panier'),
             backgroundColor: Colors.red),
       );
     }
@@ -798,7 +794,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final String? token = prefs.getString('token');
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('You are not logged in.'),
+        content: Text('Vous n\'êtes pas connecté.'),
         backgroundColor: Colors.red,
       ));
       return;
@@ -820,7 +816,7 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Failed to fetch profile data'),
+          content: Text('Impossible de récupérer les données'),
           backgroundColor: Colors.red));
     }
   }
@@ -830,7 +826,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final String? token = prefs.getString('token');
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('You are not logged in.'),
+          content: Text('Vous n\'êtes pas connecté.'),
           backgroundColor: Colors.red));
       return;
     }
@@ -852,11 +848,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Profile updated successfully'),
+          content: Text('Profil mis à jour avec succès'),
           backgroundColor: Colors.green));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Failed to update profile'),
+          content: Text('Impossible de mettre à jour le profil'),
           backgroundColor: Colors.red));
     }
   }
@@ -872,7 +868,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Profil'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -881,41 +877,42 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             TextField(
               controller: _loginController,
-              decoration: const InputDecoration(labelText: 'Login'),
+              decoration:
+                  const InputDecoration(labelText: 'Nom d\'utilisateur'),
               readOnly: true,
             ),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: 'Mot de passe'),
               obscureText: true,
             ),
             TextField(
               controller: _birthdayController,
-              decoration: const InputDecoration(labelText: 'Birthday'),
+              decoration: const InputDecoration(labelText: 'Anniversaire'),
               keyboardType: TextInputType.datetime,
             ),
             TextField(
               controller: _addressController,
-              decoration: const InputDecoration(labelText: 'Address'),
+              decoration: const InputDecoration(labelText: 'Adresse'),
             ),
             TextField(
               controller: _postalCodeController,
-              decoration: const InputDecoration(labelText: 'Postal Code'),
+              decoration: const InputDecoration(labelText: 'Code postal'),
               keyboardType: TextInputType.number,
             ),
             TextField(
               controller: _cityController,
-              decoration: const InputDecoration(labelText: 'City'),
+              decoration: const InputDecoration(labelText: 'Ville'),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _updateProfile,
-              child: const Text('Update Profile'),
+              child: const Text('Mettre à jour'),
             ),
             ElevatedButton(
               onPressed: _logout,
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Logout'),
+              child: const Text('Déconnexion'),
             ),
           ],
         ),
@@ -961,7 +958,7 @@ class _RegisterPageState extends State<RegisterPage> {
       // Successfully registered
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Registration successful'),
+            content: Text('Inscription réussie'),
             backgroundColor: Colors.green),
       );
       Navigator.pop(context); // Navigate back to login page
@@ -969,7 +966,7 @@ class _RegisterPageState extends State<RegisterPage> {
       // Registration failed
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(body.message ?? 'Registration failed'),
+            content: Text(body.message ?? 'Inscription échouée'),
             backgroundColor: Colors.red),
       );
     }
@@ -979,7 +976,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
+        title: const Text('Inscription'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -988,20 +985,21 @@ class _RegisterPageState extends State<RegisterPage> {
           children: <Widget>[
             TextField(
               controller: _usernameController,
-              decoration: const InputDecoration(labelText: 'Username'),
+              decoration:
+                  const InputDecoration(labelText: 'Nom d\'utilisateur'),
             ),
             TextField(
               controller: _passwordController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: 'Mot de passe'),
             ),
             ElevatedButton(
               onPressed: _register,
-              child: const Text('Register'),
+              child: const Text('Inscription'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: const Text('Annuler'),
             ),
           ],
         ),
