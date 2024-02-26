@@ -107,7 +107,7 @@ class _MyAppState extends State<MyApp> {
 
     if (loggedIn) {
       // Fetch the username stored in SharedPreferences
-      final String username = prefs.getString('username') ?? 'User';
+      final String username = prefs.getString('username') ?? 'Utilisateur';
       // Directly navigate to MainPage with the username
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => MainPage(username: username)),
@@ -131,7 +131,7 @@ class LoginPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Login'),
+        title: const Text('Connexion'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -140,12 +140,13 @@ class LoginPage extends StatelessWidget {
           children: <Widget>[
             TextField(
               controller: _loginController,
-              decoration: const InputDecoration(labelText: 'Login'),
+              decoration:
+                  const InputDecoration(labelText: 'Nom d\'utilisateur'),
             ),
             TextField(
               controller: _passwordController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: 'Mot de passe'),
             ),
             ElevatedButton(
               onPressed: () => _attemptLogin(context),
