@@ -809,6 +809,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final profileData = json.decode(response.body);
       setState(() {
         _loginController.text = profileData['login'] ?? '';
+        _passwordController.text = profileData['password'] ?? '';
         _birthdayController.text = profileData['birthday'] ?? '';
         _addressController.text = profileData['address'] ?? '';
         _postalCodeController.text = profileData['postalCode'] ?? '';
