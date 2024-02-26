@@ -27,10 +27,8 @@ class _MyAppState extends State<MyApp> {
     ),
   );
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    // Use AnimatedBuilder to listen to ThemeManager changes
     return AnimatedBuilder(
       animation: _themeManager,
       builder: (context, _) {
@@ -92,7 +90,7 @@ class _MyAppState extends State<MyApp> {
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
-      // Optionally save the username again for later use
+
       await prefs.setString('username', responseData['username']);
       return responseData['username'];
     } else {
@@ -100,21 +98,16 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  // This is part of your widget that decides whether to show the login page or main page
   Future<void> navigateBasedOnLoginStatus(BuildContext context) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final bool loggedIn =
-        await isLoggedIn(); // This already updates 'username' in prefs if logged in
+    final bool loggedIn = await isLoggedIn();
 
     if (loggedIn) {
-      // Fetch the username stored in SharedPreferences
       final String username = prefs.getString('username') ?? 'Utilisateur';
-      // Directly navigate to MainPage with the username
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => MainPage(username: username)),
       );
     } else {
-      // Not logged in, navigate to the login page
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => LoginPage()),
       );
@@ -169,7 +162,6 @@ class LoginPage extends StatelessWidget {
   void _attemptLogin(BuildContext context) async {
     final login = _loginController.text;
     final password = _passwordController.text;
-    // Implement the API call for login
     var url = Uri.parse('${MyApp.apiUrl}/login');
     var response = await http.post(url,
         headers: {"Content-Type": "application/json"},
@@ -241,7 +233,6 @@ class _MainPageState extends State<MainPage> {
                 ? Icons.wb_sunny
                 : Icons.nightlight_round),
             onPressed: () {
-              // Determine the new theme based on the current theme
               ThemeData newTheme = Theme.of(context).brightness ==
                       Brightness.dark
                   ? ThemeData(
@@ -253,7 +244,6 @@ class _MainPageState extends State<MainPage> {
                       colorScheme: const ColorScheme.dark(),
                       useMaterial3: true,
                     );
-              // Access the theme manager from MyApp and set the new theme
               (context.findAncestorStateOfType<_MyAppState>()!)
                   ._themeManager
                   .setTheme(newTheme);
@@ -336,25 +326,22 @@ class _ActivitiesPageState extends State<ActivitiesPage>
   List<Activity> _filteredActivities = [];
   bool _isSearchMode = false;
   final TextEditingController _searchController = TextEditingController();
-  TabController? _tabController; // Changed from late to nullable
-  final Set<String> _categories = {'Tout'}; // Initialized with 'All'
+  TabController? _tabController;
+  final Set<String> _categories = {'Tout'};
 
   @override
   void initState() {
     super.initState();
     fetchActivities().then((activities) {
       if (mounted) {
-        // Check if the widget is still in the tree
         setState(() {
           _activities = activities;
           _categories
               .addAll(activities.map((activity) => activity.category).toSet());
           _filteredActivities = activities;
-          _tabController = TabController(
-              length: _categories.length,
-              vsync: this); // Initialize with actual length
+          _tabController =
+              TabController(length: _categories.length, vsync: this);
           _tabController!.addListener(() {
-            // Ensure we rebuild when tab changes if needed
             if (_isSearchMode) {
               _searchController.clear();
               _filterActivitiesByName('');
@@ -371,7 +358,6 @@ class _ActivitiesPageState extends State<ActivitiesPage>
         ? Colors.white
         : Colors.black;
 
-    // Conditional rendering based on whether _tabController is initialized
     if (_tabController == null) {
       return Scaffold(
         appBar: AppBar(
@@ -392,12 +378,11 @@ class _ActivitiesPageState extends State<ActivitiesPage>
                     hintText: 'Rechercher une activité...',
                     border: InputBorder.none,
                     hintStyle: TextStyle(
-                      color: textColor.withOpacity(
-                          0.6), // Use a slightly opaque version for hint text
+                      color: textColor.withOpacity(0.6),
                     ),
                   ),
                   style: TextStyle(
-                    color: textColor, // Use the dynamic text color here
+                    color: textColor,
                   ),
                   onChanged: (value) {
                     _filterActivitiesByName(value);
@@ -416,8 +401,7 @@ class _ActivitiesPageState extends State<ActivitiesPage>
           actions: buildActions(),
         ),
         body: _isSearchMode || _tabController == null
-            ? _buildActivityList(
-                'Tout') // Display all if in search mode or _tabController is not ready
+            ? _buildActivityList('Tout')
             : TabBarView(
                 controller: _tabController,
                 children: _categories.map((category) {
@@ -554,7 +538,6 @@ class ActivityDetailPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: ElevatedButton(
                 onPressed: () {
-                  // Implement navigation back to activities list
                   Navigator.pop(context);
                 },
                 child: const Text('Retour'),
@@ -572,8 +555,6 @@ class ActivityDetailPage extends StatelessWidget {
       ),
     );
   }
-
-  // Inside ActivityDetailPage
 
   Future<void> addToBasket(BuildContext context, String activityId) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -718,7 +699,6 @@ class _BasketPageState extends State<BasketPage> {
     );
   }
 
-  // Inside _BasketPageState
   void removeActivityFromBasket(String activityId) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
@@ -745,7 +725,6 @@ class _BasketPageState extends State<BasketPage> {
 
     if (response.statusCode == 200) {
       setState(() {
-        // Refetch the basket items to update the UI after removal
         basketItems = fetchBasketItems();
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -961,15 +940,13 @@ class _RegisterPageState extends State<RegisterPage> {
     final body = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
-      // Successfully registered
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Inscription réussie'),
             backgroundColor: Colors.green),
       );
-      Navigator.pop(context); // Navigate back to login page
+      Navigator.pop(context);
     } else {
-      // Registration failed
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(body.message ?? 'Inscription échouée'),
